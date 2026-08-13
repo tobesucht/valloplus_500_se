@@ -5,7 +5,6 @@ import logging
 # --- KONFIGURATION ---
 SERIAL_PORT = '/dev/ttyUSB0'
 BAUD_RATE = 9600
-OFFSET = 151
 
 # --- TEMPERATUR-GRENZEN ---
 TEMP_MIN = 10.0            # Unter 10°C: Zu kalt für Nachtauskühlung (Frostgefahr)
@@ -13,11 +12,11 @@ TEMP_INNEN_ZU_WARM = 23.0  # Ab hier wird nachts gekühlt
 TEMP_INNEN_KUEHL = 22.0    # Ab hier wird die Kühlung wieder gestoppt
 
 # --- REGISTER & WERTE ---
-REG_TEMP_ABLUFT = 0x32     # Innentemperatur
-REG_TEMP_AUSSEN = 0x33     # Außentemperatur
+REG_TEMP_AUSSEN = 0x32     # Außentemperatur (Auss)
+REG_TEMP_ABLUFT = 0x34     # Innentemperatur (Abl)
 
 REG_FAN = 0x29             # Lüfter-Register
-FAN_NORMAL = 3             # Stufe 2 (Tagesbetrieb) 1:1, 2:3, 3:7, 4:15, 5:31, 6:63, 7:127, 8:255
+FAN_NORMAL = 3             # Stufe 2 (Tagesbetrieb)
 FAN_BOOST = 31             # Stufe 5 (Nachtauskühlung)
 
 REG_BYPASS = 0xA3          # Bypass-Register
@@ -40,6 +39,10 @@ def send_command(ser, register, value):
             time.sleep(0.1)
     except Exception as e:
         logging.error(f"Fehler beim Senden: {e}")
+
+def get_celsius(raw_value):
+    """Rechnet den Hex-Rohwert in echte Grad Celsius um"""
+    return round((raw_value / 2.5) - 44.0, 1)
 
 def main():
     logging.info("Vallox Smart-Automatik gestartet. Warte auf Sensordaten...")
@@ -64,10 +67,11 @@ def main():
                     reg = rest[2]
                     raw_val = rest[3]
                     
+                    # Die korrekten Temperatur-Register abgreifen
                     if reg == REG_TEMP_ABLUFT:
-                        temp_in = raw_val - OFFSET
+                        temp_in = get_celsius(raw_val)
                     elif reg == REG_TEMP_AUSSEN:
-                        temp_out = raw_val - OFFSET
+                        temp_out = get_celsius(raw_val)
 
             # 2. Logik prüfen (alle 60 Sekunden, sobald wir Werte haben)
             current_time = time.time()
@@ -102,6 +106,8 @@ def main():
                     new_wt = WT_AKTIV
                     new_fan = FAN_NORMAL
                     modus = "Winterbetrieb (Wärmerückgewinnung)"
+                else:
+                    modus = "Wartezone (keine Änderung nötig)"
 
                 # --- BEFEHLE SENDEN ---
                 if new_wt != last_wt_state or new_fan != last_fan_state:
@@ -116,11 +122,13 @@ def main():
                     if new_fan != last_fan_state and new_fan is not None:
                         send_command(ser, REG_FAN, new_fan)
                         last_fan_state = new_fan
-                        lvl = "6 (Boost)" if new_fan == FAN_BOOST else "2 (Normal)"
+                        lvl = "5 (Boost)" if new_fan == FAN_BOOST else "2 (Normal)"
                         logging.info(f"-> Lüfterstufe geändert auf: {lvl}")
                         
                 # Sicherheits-Sync: Alle 15 Minuten den Status erneut senden
                 elif int(current_time) % 900 < 60:
+                    # Optional: auskommentieren, wenn es zu sehr im Log stört
+                    # logging.info(f"Sync-Check | Außen: {temp_out}°C, Innen: {temp_in}°C")
                     if last_wt_state is not None:
                         send_command(ser, REG_BYPASS, last_wt_state)
                     if last_fan_state is not None:
