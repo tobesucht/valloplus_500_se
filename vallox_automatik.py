@@ -11,6 +11,9 @@ TEMP_MIN = 10.0            # Unter 10°C: Zu kalt für Nachtauskühlung (Frostge
 TEMP_INNEN_ZU_WARM = 23.0  # Ab hier wird nachts gekühlt
 TEMP_INNEN_KUEHL = 22.0    # Ab hier wird die Kühlung wieder gestoppt
 
+# NEU: Der Puffer für die Nachtauskühlung
+TEMP_DIFF_COOLING = 2.0    # Außenluft muss mind. 2.0 °C kühler sein als die Innenluft, damit der Boost startet
+
 # --- REGISTER & WERTE ---
 REG_TEMP_AUSSEN = 0x32     # Außentemperatur (Auss)
 REG_TEMP_ABLUFT = 0x34     # Innentemperatur (Abl)
@@ -67,7 +70,6 @@ def main():
                     reg = rest[2]
                     raw_val = rest[3]
                     
-                    # Die korrekten Temperatur-Register abgreifen
                     if reg == REG_TEMP_ABLUFT:
                         temp_in = get_celsius(raw_val)
                     elif reg == REG_TEMP_AUSSEN:
@@ -83,8 +85,8 @@ def main():
 
                 # --- DIE SMARTE LOGIK ---
                 
-                # SZENARIO A: Draußen ist kühler als drinnen UND drinnen ist es zu warm
-                if TEMP_MIN < temp_out < temp_in and temp_in >= TEMP_INNEN_ZU_WARM:
+                # SZENARIO A: Draußen ist DEUTLICH kühler als drinnen UND drinnen ist es zu warm
+                if TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
                     new_wt = WT_DEAKTIVIERT
                     new_fan = FAN_BOOST
                     modus = "Nachtauskühlung AKTIV"
@@ -95,7 +97,7 @@ def main():
                     new_fan = FAN_NORMAL
                     modus = "Normalbetrieb (Haus ist kühl)"
                     
-                # SZENARIO C: Draußen ist es heißer als drinnen (Hitzeschutz)
+                # SZENARIO C: Draußen ist es heißer oder fast genauso warm wie drinnen (Hitzeschutz)
                 elif temp_out >= temp_in:
                     new_wt = WT_AKTIV
                     new_fan = FAN_NORMAL
@@ -127,8 +129,6 @@ def main():
                         
                 # Sicherheits-Sync: Alle 15 Minuten den Status erneut senden
                 elif int(current_time) % 900 < 60:
-                    # Optional: auskommentieren, wenn es zu sehr im Log stört
-                    # logging.info(f"Sync-Check | Außen: {temp_out}°C, Innen: {temp_in}°C")
                     if last_wt_state is not None:
                         send_command(ser, REG_BYPASS, last_wt_state)
                     if last_fan_state is not None:
