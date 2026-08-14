@@ -1,0 +1,9 @@
+Lüfterstufe (am Bedienteil),Internes Bitmuster,Wert im Python-Skript
+Stufe 1,0000 0001,1
+Stufe 2,0000 0011,3
+Stufe 3,0000 0111,7
+Stufe 4,0000 1111,15
+Stufe 5,0001 1111,31
+Stufe 6,0011 1111,63
+Stufe 7,0111 1111,127
+Stufe 8,1111 1111,255
