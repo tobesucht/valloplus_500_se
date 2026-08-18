@@ -8,8 +8,8 @@ BAUD_RATE = 9600
 
 # --- TEMPERATUR-GRENZEN ---
 TEMP_MIN = 10.0            # Unter 10°C: Zu kalt für Nachtauskühlung (Frostgefahr)
-TEMP_INNEN_ZU_WARM = 23.0  # Ab hier wird nachts gekühlt
-TEMP_INNEN_KUEHL = 22.0    # Ab hier wird die Kühlung wieder gestoppt
+TEMP_INNEN_ZU_WARM = 24.0  # Ab hier wird nachts gekühlt
+TEMP_INNEN_KUEHL = 23.0    # Ab hier wird die Kühlung wieder gestoppt
 
 # NEU: Der Puffer für die Nachtauskühlung
 TEMP_DIFF_COOLING = 2.0    # Außenluft muss mind. 2.0 °C kühler sein als die Innenluft, damit der Boost startet
@@ -20,7 +20,7 @@ REG_TEMP_ABLUFT = 0x34     # Innentemperatur (Abl)
 
 REG_FAN = 0x29             # Lüfter-Register
 FAN_NORMAL = 3             # Stufe 2 (Tagesbetrieb)
-FAN_BOOST = 31             # Stufe 5 (Nachtauskühlung)
+FAN_BOOST = 15             # Stufe 4 (Nachtauskühlung)
 
 REG_BYPASS = 0xA3          # Bypass-Register
 WT_AKTIV = 137             # Wärmetauscher AN (Bypass ZU)
@@ -124,7 +124,7 @@ def main():
                     if new_fan != last_fan_state and new_fan is not None:
                         send_command(ser, REG_FAN, new_fan)
                         last_fan_state = new_fan
-                        lvl = "5 (Boost)" if new_fan == FAN_BOOST else "2 (Normal)"
+                        lvl = "4 (Boost)" if new_fan == FAN_BOOST else "2 (Normal)"
                         logging.info(f"-> Lüfterstufe geändert auf: {lvl}")
                         
                 # Sicherheits-Sync: Alle 15 Minuten den Status erneut senden

@@ -8,6 +8,7 @@ BAUD_RATE = 9600
 TEMP_MIN = 10.0
 TEMP_INNEN_ZU_WARM = 23.0
 TEMP_INNEN_KUEHL = 22.0
+TEMP_DIFF_COOLING = 2.0  # NEU: Der Puffer!
 
 REG_TEMP_AUSSEN = 0x32  # Außentemperatur (Auss)
 REG_TEMP_ABLUFT = 0x34  # Innentemperatur (Abl)
@@ -53,14 +54,14 @@ def check_status():
     print(" 🤖 ENTSCHEIDUNG DER AUTOMATIK")
     print("-" * 45)
     
-    if TEMP_MIN < temp_out < temp_in and temp_in >= TEMP_INNEN_ZU_WARM:
+    if TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
         print("Szenario: 🌙 NACHTAUSKÜHLUNG")
-        print("Bedingung erfüllt: Draußen kühler als drinnen UND Haus zu warm (>= 23°C).")
+        print(f"Bedingung erfüllt: Draußen ist mind. {TEMP_DIFF_COOLING}°C kühler als drinnen UND Haus zu warm (>= 23°C).")
         print("Folgeaktion:       -> Bypass ÖFFNEN, Lüfter auf BOOST (Stufe 5)")
         
     elif temp_in < TEMP_INNEN_KUEHL:
         print("Szenario: 😌 NORMALBETRIEB (Haus ist kühl)")
-        print("Bedingung erfüllt: Haus ist unter der Kühlschwelle (< 22°C).")
+        print(f"Bedingung erfüllt: Haus ist unter der Kühlschwelle (< {TEMP_INNEN_KUEHL}°C).")
         print("Folgeaktion:       -> Bypass SCHLIESSEN, Lüfter auf NORMAL (Stufe 2)")
         
     elif temp_out >= temp_in:
@@ -70,13 +71,13 @@ def check_status():
         
     elif temp_out <= TEMP_MIN:
         print("Szenario: ❄️ FROSTSCHUTZ (Winter)")
-        print("Bedingung erfüllt: Draußen ist es zu kalt (<= 10°C).")
+        print(f"Bedingung erfüllt: Draußen ist es zu kalt (<= {TEMP_MIN}°C).")
         print("Folgeaktion:       -> Bypass SCHLIESSEN, Lüfter auf NORMAL (Stufe 2)")
         
     else:
         print("Szenario: ⏸️ WARTEZONE")
-        print(f"Bedingung: Innentemperatur ({temp_in}°C) liegt genau zwischen {TEMP_INNEN_KUEHL}°C und {TEMP_INNEN_ZU_WARM}°C.")
-        print("Folgeaktion:       -> KEINE ÄNDERUNG (Aktueller Zustand wird beibehalten)")
+        print(f"Grund: Draußen ({temp_out}°C) ist zwar kühler als Innen ({temp_in}°C), aber der Temperaturunterschied ist kleiner als {TEMP_DIFF_COOLING}°C.")
+        print("Folgeaktion:       -> KEINE ÄNDERUNG (Aktueller Zustand wird beibehalten um 'Ping-Pong' zu vermeiden)")
 
     print("=" * 45)
 
