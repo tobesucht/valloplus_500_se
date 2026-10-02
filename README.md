@@ -38,6 +38,8 @@ Das Skript liest die Temperaturen der Abluft (Innen) und Außenluft und schaltet
     -> *Wärmetauscher AKTIV, Lüfter Stufe 2.*
 4.  **Frostschutz:** Außentemperatur unter 10 °C 
     -> *Wärmetauscher AKTIV (Wärmerückgewinnung), Lüfter Stufe 2.*
+5.  **Frost-Stopp:** Außentemperatur unter -5 °C (hat Vorrang vor allen anderen Regeln)
+    -> *Anlage AUS. So muss die Anlage nicht elektrisch vorheizen. Die Anlage läuft wieder an, wenn außen mind. -3 °C sind. Sie bleibt aber mind. 30 Minuten aus.*
 
 ## 🚀 Einrichtung als Systemd-Service (Autostart)
 

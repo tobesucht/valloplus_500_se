@@ -39,9 +39,12 @@ def main():
         print("-" * 30)
         print("[3] Bypass ÖFFNEN (Sende 129 an 0xA3)")
         print("[4] Bypass SCHLIESSEN (Sende 137 an 0xA3)")
+        print("-" * 30)
+        print("[5] Anlage AUS (Sende 136 an 0xA3)")
+        print("[6] Anlage EIN (Sende 137 an 0xA3)")
         print("[0] Beenden")
-        
-        auswahl = input("\nIhre Wahl (0-4): ")
+
+        auswahl = input("\nIhre Wahl (0-6): ")
         
         if auswahl == '1':
             send_command(ser, 0x29, 3)
@@ -50,6 +53,10 @@ def main():
         elif auswahl == '3':
             send_command(ser, 0xA3, 129)
         elif auswahl == '4':
+            send_command(ser, 0xA3, 137)
+        elif auswahl == '5':
+            send_command(ser, 0xA3, 136)
+        elif auswahl == '6':
             send_command(ser, 0xA3, 137)
         elif auswahl == '0':
             print("Test beendet.")

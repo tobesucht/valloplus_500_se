@@ -14,6 +14,11 @@ TEMP_INNEN_KUEHL = 23.0    # Ab hier wird die Kühlung wieder gestoppt
 # NEU: Der Puffer für die Nachtauskühlung
 TEMP_DIFF_COOLING = 2.0    # Außenluft muss mind. 2.0 °C kühler sein als die Innenluft, damit der Boost startet
 
+# Frost-Stopp: Bei sehr kalter Außenluft Anlage ausschalten (keine elektrische Vorheizung)
+TEMP_FROST_STOP = -5.0     # Unter -5°C: Luftaustausch stoppen
+TEMP_FROST_RESTART = -3.0  # Ab hier läuft die Anlage wieder an
+FROST_MIN_AUS = 1800       # Mindest-Stillstand in Sekunden (Außenfühler driftet bei stehender Anlage)
+
 # --- REGISTER & WERTE ---
 REG_TEMP_AUSSEN = 0x32     # Außentemperatur (Auss)
 REG_TEMP_ABLUFT = 0x34     # Innentemperatur (Abl)
@@ -25,6 +30,13 @@ FAN_BOOST = 15             # Stufe 4 (Nachtauskühlung)
 REG_BYPASS = 0xA3          # Bypass-Register
 WT_AKTIV = 137             # Wärmetauscher AN (Bypass ZU)
 WT_DEAKTIVIERT = 129       # Wärmetauscher AUS (Bypass AUF = Freie Kühlung)
+ANLAGE_AUS = 136           # Wie WT_AKTIV, aber Bit 0 (Power) gelöscht -> Anlage AUS
+
+WT_TEXT = {
+    WT_AKTIV: "AKTIV (Bypass zu)",
+    WT_DEAKTIVIERT: "DEAKTIVIERT (Bypass auf)",
+    ANLAGE_AUS: "ANLAGE AUS (Frost-Stopp)",
+}
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
@@ -60,6 +72,7 @@ def main():
     last_wt_state = None
     last_fan_state = None
     last_check_time = 0
+    frost_stop_since = None
 
     while True:
         try:
@@ -83,10 +96,25 @@ def main():
                 new_wt = last_wt_state
                 new_fan = last_fan_state
 
+                # --- FROST-STOPP ---
+                if frost_stop_since is not None:
+                    if temp_out >= TEMP_FROST_RESTART and (current_time - frost_stop_since) >= FROST_MIN_AUS:
+                        frost_stop_since = None
+                        # Wiederanlauf: Default EIN, damit die Wartezone die Anlage nicht AUS lässt
+                        new_wt = WT_AKTIV
+                        new_fan = FAN_NORMAL
+                elif temp_out < TEMP_FROST_STOP:
+                    frost_stop_since = current_time
+
                 # --- DIE SMARTE LOGIK ---
-                
+
+                # SZENARIO F: Frost-Stopp hat Vorrang vor allem anderen
+                if frost_stop_since is not None:
+                    new_wt = ANLAGE_AUS
+                    modus = "Frost-Stopp (Anlage AUS)"
+
                 # SZENARIO A: Draußen ist DEUTLICH kühler als drinnen UND drinnen ist es zu warm
-                if TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
+                elif TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
                     new_wt = WT_DEAKTIVIERT
                     new_fan = FAN_BOOST
                     modus = "Nachtauskühlung AKTIV"
@@ -118,8 +146,7 @@ def main():
                     if new_wt != last_wt_state and new_wt is not None:
                         send_command(ser, REG_BYPASS, new_wt)
                         last_wt_state = new_wt
-                        state_str = "AKTIV (Bypass zu)" if new_wt == WT_AKTIV else "DEAKTIVIERT (Bypass auf)"
-                        logging.info(f"-> Wärmetauscher geschaltet auf: {state_str}")
+                        logging.info(f"-> Wärmetauscher geschaltet auf: {WT_TEXT[new_wt]}")
                         
                     if new_fan != last_fan_state and new_fan is not None:
                         send_command(ser, REG_FAN, new_fan)
@@ -131,7 +158,8 @@ def main():
                 elif int(current_time) % 900 < 60:
                     if last_wt_state is not None:
                         send_command(ser, REG_BYPASS, last_wt_state)
-                    if last_fan_state is not None:
+                    # Während Frost-Stopp keinen Lüfterbefehl, der die Anlage evtl. wieder einschaltet
+                    if last_fan_state is not None and frost_stop_since is None:
                         send_command(ser, REG_FAN, last_fan_state)
 
         except Exception as e:
