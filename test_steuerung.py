@@ -37,8 +37,8 @@ def main():
         print("[1] Lüfter auf Stufe 2 (Sende 3 an 0x29)")
         print("[2] Lüfter auf Stufe 6 (Sende 63 an 0x29)")
         print("-" * 30)
-        print("[3] Bypass ÖFFNEN (Sende 137 an 0xA3)")
-        print("[4] Bypass SCHLIESSEN (Sende 129 an 0xA3)")
+        print("[3] Bypass ÖFFNEN (Sende 129 an 0xA3)")
+        print("[4] Bypass SCHLIESSEN (Sende 137 an 0xA3)")
         print("[0] Beenden")
         
         auswahl = input("\nIhre Wahl (0-4): ")
@@ -48,9 +48,9 @@ def main():
         elif auswahl == '2':
             send_command(ser, 0x29, 63)
         elif auswahl == '3':
-            send_command(ser, 0xA3, 137)
-        elif auswahl == '4':
             send_command(ser, 0xA3, 129)
+        elif auswahl == '4':
+            send_command(ser, 0xA3, 137)
         elif auswahl == '0':
             print("Test beendet.")
             break
