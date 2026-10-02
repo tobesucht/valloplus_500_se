@@ -41,10 +41,11 @@ def main():
         print("[4] Bypass SCHLIESSEN (Sende 137 an 0xA3)")
         print("-" * 30)
         print("[5] Anlage AUS (Sende 136 an 0xA3)")
-        print("[6] Anlage EIN (Sende 137 an 0xA3)")
+        print("[6] Anlage EIN (Sende 137 an 0xA3, dann 3 an 0x29)")
+        print("[7] Nur Power-Bit EIN (Sende 137 an 0xA3, ohne Lüfterbefehl)")
         print("[0] Beenden")
 
-        auswahl = input("\nIhre Wahl (0-6): ")
+        auswahl = input("\nIhre Wahl (0-7): ")
         
         if auswahl == '1':
             send_command(ser, 0x29, 3)
@@ -57,6 +58,9 @@ def main():
         elif auswahl == '5':
             send_command(ser, 0xA3, 136)
         elif auswahl == '6':
+            send_command(ser, 0xA3, 137)
+            send_command(ser, 0x29, 3)
+        elif auswahl == '7':
             send_command(ser, 0xA3, 137)
         elif auswahl == '0':
             print("Test beendet.")

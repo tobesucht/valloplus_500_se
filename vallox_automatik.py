@@ -103,6 +103,8 @@ def main():
                         # Wiederanlauf: Default EIN, damit die Wartezone die Anlage nicht AUS lässt
                         new_wt = WT_AKTIV
                         new_fan = FAN_NORMAL
+                        # Nach dem Einschalten läuft die Anlage erst mit einem Lüfterbefehl -> immer neu senden
+                        last_fan_state = None
                 elif temp_out < TEMP_FROST_STOP:
                     frost_stop_since = current_time
 
