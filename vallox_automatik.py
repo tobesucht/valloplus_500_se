@@ -32,6 +32,9 @@ WT_AKTIV = 137             # Wärmetauscher AN (Bypass ZU)
 WT_DEAKTIVIERT = 129       # Wärmetauscher AUS (Bypass AUF = Freie Kühlung)
 ANLAGE_AUS = 136           # Wie WT_AKTIV, aber Bit 0 (Power) gelöscht -> Anlage AUS
 
+ADR_HAUPTPLATINE = 0x11
+ADR_BEDIENTEILE = 0x20     # Broadcast an alle Bedienteile
+
 WT_TEXT = {
     WT_AKTIV: "AKTIV (Bypass zu)",
     WT_DEAKTIVIERT: "DEAKTIVIERT (Bypass auf)",
@@ -43,9 +46,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 def checksum(msg):
     return sum(msg) % 256
 
-def send_command(ser, register, value):
+def send_command(ser, register, value, empfaenger=ADR_HAUPTPLATINE):
     """Sendet einen Befehl wie das Original-Bedienteil 3x hintereinander"""
-    msg = [0x01, 0x22, 0x11, register, value]
+    msg = [0x01, 0x22, empfaenger, register, value]
     msg.append(checksum(msg))
     
     try:
@@ -54,6 +57,13 @@ def send_command(ser, register, value):
             time.sleep(0.1)
     except Exception as e:
         logging.error(f"Fehler beim Senden: {e}")
+
+def send_ein_aus(ser, value):
+    """Ein/Aus an Hauptplatine UND Bedienteile senden.
+    Erfährt das Bedienteil nichts vom Aus, zeigt es "X-e 0" und die Anlage
+    lässt sich nur noch über die Taste am Bedienteil wieder einschalten."""
+    send_command(ser, REG_BYPASS, value)
+    send_command(ser, REG_BYPASS, value, empfaenger=ADR_BEDIENTEILE)
 
 def get_celsius(raw_value):
     """Rechnet den Hex-Rohwert in echte Grad Celsius um"""
@@ -103,8 +113,6 @@ def main():
                         # Wiederanlauf: Default EIN, damit die Wartezone die Anlage nicht AUS lässt
                         new_wt = WT_AKTIV
                         new_fan = FAN_NORMAL
-                        # Nach dem Einschalten läuft die Anlage erst mit einem Lüfterbefehl -> immer neu senden
-                        last_fan_state = None
                 elif temp_out < TEMP_FROST_STOP:
                     frost_stop_since = current_time
 
@@ -146,7 +154,10 @@ def main():
                     logging.info(f"Modus-Wechsel: {modus} | Außen: {temp_out}°C, Innen: {temp_in}°C")
                     
                     if new_wt != last_wt_state and new_wt is not None:
-                        send_command(ser, REG_BYPASS, new_wt)
+                        if ANLAGE_AUS in (new_wt, last_wt_state):
+                            send_ein_aus(ser, new_wt)
+                        else:
+                            send_command(ser, REG_BYPASS, new_wt)
                         last_wt_state = new_wt
                         logging.info(f"-> Wärmetauscher geschaltet auf: {WT_TEXT[new_wt]}")
                         
@@ -158,7 +169,9 @@ def main():
                         
                 # Sicherheits-Sync: Alle 15 Minuten den Status erneut senden
                 elif int(current_time) % 900 < 60:
-                    if last_wt_state is not None:
+                    if last_wt_state == ANLAGE_AUS:
+                        send_ein_aus(ser, last_wt_state)
+                    elif last_wt_state is not None:
                         send_command(ser, REG_BYPASS, last_wt_state)
                     # Während Frost-Stopp keinen Lüfterbefehl, der die Anlage evtl. wieder einschaltet
                     if last_fan_state is not None and frost_stop_since is None:

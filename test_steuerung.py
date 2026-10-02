@@ -40,16 +40,11 @@ def main():
         print("[3] Bypass ÖFFNEN (Sende 129 an 0xA3)")
         print("[4] Bypass SCHLIESSEN (Sende 137 an 0xA3)")
         print("-" * 30)
-        print("[5] Anlage AUS (Sende 136 an 0xA3)")
-        print("[6] Anlage EIN (Sende 137 an 0xA3, dann 3 an 0x29)")
-        print("[7] Nur Power-Bit EIN (Sende 137 an 0xA3, ohne Lüfterbefehl)")
-        print("[8] Anlage EIN als Bedienteil (Sende 137 an 0xA3 mit Absender 0x21)")
-        print("-" * 30)
-        print("[9] Anlage AUS an Hauptplatine + Bedienteile (136 an 0x11 und 0x20)")
-        print("[10] Anlage EIN an Hauptplatine + Bedienteile (137 an 0x11 und 0x20)")
+        print("[5] Anlage AUS (136 an 0xA3, an Hauptplatine + Bedienteile)")
+        print("[6] Anlage EIN (137 an 0xA3, an Hauptplatine + Bedienteile)")
         print("[0] Beenden")
 
-        auswahl = input("\nIhre Wahl (0-10): ")
+        auswahl = input("\nIhre Wahl (0-6): ")
         
         if auswahl == '1':
             send_command(ser, 0x29, 3)
@@ -60,18 +55,10 @@ def main():
         elif auswahl == '4':
             send_command(ser, 0xA3, 137)
         elif auswahl == '5':
-            send_command(ser, 0xA3, 136)
-        elif auswahl == '6':
-            send_command(ser, 0xA3, 137)
-            send_command(ser, 0x29, 3)
-        elif auswahl == '7':
-            send_command(ser, 0xA3, 137)
-        elif auswahl == '8':
-            send_command(ser, 0xA3, 137, sender=0x21)
-        elif auswahl == '9':
+            # Ohne Kopie an die Bedienteile (0x20) zeigt das Bedienteil "X-e 0"
             send_command(ser, 0xA3, 136)
             send_command(ser, 0xA3, 136, receiver=0x20)
-        elif auswahl == '10':
+        elif auswahl == '6':
             send_command(ser, 0xA3, 137)
             send_command(ser, 0xA3, 137, receiver=0x20)
         elif auswahl == '0':
