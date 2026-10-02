@@ -60,8 +60,8 @@ def send_command(ser, register, value, empfaenger=ADR_HAUPTPLATINE):
 
 def send_ein_aus(ser, value):
     """Ein/Aus an Hauptplatine UND Bedienteile senden.
-    Erfährt das Bedienteil nichts vom Aus, zeigt es "X-e 0" und die Anlage
-    lässt sich nur noch über die Taste am Bedienteil wieder einschalten."""
+    Geht das Aus nur an die Hauptplatine, lässt sich die Anlage danach nur
+    noch über die Taste am Bedienteil wieder einschalten (getestet)."""
     send_command(ser, REG_BYPASS, value)
     send_command(ser, REG_BYPASS, value, empfaenger=ADR_BEDIENTEILE)
 

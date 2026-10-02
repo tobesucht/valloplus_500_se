@@ -55,7 +55,7 @@ def main():
         elif auswahl == '4':
             send_command(ser, 0xA3, 137)
         elif auswahl == '5':
-            # Ohne Kopie an die Bedienteile (0x20) zeigt das Bedienteil "X-e 0"
+            # Ohne Kopie an die Bedienteile (0x20) lässt sich die Anlage nur noch am Bedienteil einschalten
             send_command(ser, 0xA3, 136)
             send_command(ser, 0xA3, 136, receiver=0x20)
         elif auswahl == '6':
