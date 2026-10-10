@@ -16,8 +16,10 @@ TEMP_DIFF_COOLING = 2.0    # Außenluft muss mind. 2.0 °C kühler sein als die 
 
 # Frost-Stopp: Bei sehr kalter Außenluft Anlage ausschalten (keine elektrische Vorheizung)
 TEMP_FROST_STOP = -5.0     # Unter -5°C: Luftaustausch stoppen
-TEMP_FROST_RESTART = -3.0  # Ab hier läuft die Anlage wieder an
-FROST_MIN_AUS = 1800       # Mindest-Stillstand in Sekunden (Außenfühler driftet bei stehender Anlage)
+FROST_BESTAETIGUNG = 300   # So lange (s) muss es unter -5°C bleiben, bevor die Anlage ausgeht
+FROST_MIN_AUS = 6 * 3600   # Stillstand in Sekunden (6 Stunden), danach Probelauf
+# Bei stehender Anlage sendet die Hauptplatine keine neuen Temperaturen.
+# Darum läuft die Anlage nach FROST_MIN_AUS zur Probe an und misst neu.
 
 # --- REGISTER & WERTE ---
 REG_TEMP_AUSSEN = 0x32     # Außentemperatur (Auss)
@@ -83,13 +85,16 @@ def main():
     last_fan_state = None
     last_check_time = 0
     frost_stop_since = None
+    frost_kandidat_seit = None
 
     while True:
         try:
             # 1. Bus live abhören
             if ser.read(1) == b'\x01':
                 rest = ser.read(5)
-                if len(rest) == 5:
+                # Nur gültige Pakete der Hauptplatine: Ein falsch zerlegtes Paket
+                # lieferte sonst z. B. -43.6°C (Rohwert 1 = Startbyte)
+                if len(rest) == 5 and rest[0] == ADR_HAUPTPLATINE and checksum(b'\x01' + rest[:4]) == rest[4]:
                     reg = rest[2]
                     raw_val = rest[3]
                     
@@ -107,14 +112,22 @@ def main():
                 new_fan = last_fan_state
 
                 # --- FROST-STOPP ---
+                probelauf = False
                 if frost_stop_since is not None:
-                    if temp_out >= TEMP_FROST_RESTART and (current_time - frost_stop_since) >= FROST_MIN_AUS:
+                    if (current_time - frost_stop_since) >= FROST_MIN_AUS:
                         frost_stop_since = None
+                        probelauf = True
                         # Wiederanlauf: Default EIN, damit die Wartezone die Anlage nicht AUS lässt
                         new_wt = WT_AKTIV
                         new_fan = FAN_NORMAL
                 elif temp_out < TEMP_FROST_STOP:
-                    frost_stop_since = current_time
+                    if frost_kandidat_seit is None:
+                        frost_kandidat_seit = current_time
+                    elif (current_time - frost_kandidat_seit) >= FROST_BESTAETIGUNG:
+                        frost_stop_since = current_time
+                        frost_kandidat_seit = None
+                else:
+                    frost_kandidat_seit = None
 
                 # --- DIE SMARTE LOGIK ---
 
@@ -176,6 +189,11 @@ def main():
                     # Während Frost-Stopp keinen Lüfterbefehl, der die Anlage evtl. wieder einschaltet
                     if last_fan_state is not None and frost_stop_since is None:
                         send_command(ser, REG_FAN, last_fan_state)
+
+                # Nach dem Probelauf erst mit einem frischen Außenwert weiterentscheiden
+                if probelauf:
+                    logging.info(f"Probelauf nach Frost-Stopp: warte auf neuen Außenwert (alt: {temp_out}°C)")
+                    temp_out = None
 
         except Exception as e:
             logging.error(f"Fehler in Hauptschleife: {e}")

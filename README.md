@@ -36,7 +36,7 @@ Das Skript `vallox_automatik.py` prüft die Temperaturen etwa einmal pro Minute.
 
 | Nr. | Modus | Bedingung | Bypass | Lüfter |
 |---|---|---|---|---|
-| 1 | Frost-Stopp | außen unter -5 °C | Anlage aus | Anlage aus |
+| 1 | Frost-Stopp | außen 5 Minuten lang unter -5 °C | Anlage aus | Anlage aus |
 | 2 | Nachtauskühlung | innen ab 24 °C, außen mindestens 2 °C kühler als innen und über 10 °C | auf | Stufe 4 |
 | 3 | Normalbetrieb | innen unter 23 °C | zu | Stufe 2 |
 | 4 | Hitzeschutz | außen gleich warm wie innen oder wärmer | zu | Stufe 2 |
@@ -53,7 +53,9 @@ Direkt nach dem Start kennt das Skript keinen Sollzustand. Fällt die erste Mess
 
 ### Frost-Stopp
 
-Die Anlage läuft wieder an, wenn außen mindestens -3 °C sind. Sie bleibt aber mindestens 30 Minuten aus. Bei stehender Anlage misst der Außenfühler die Luft im Kanal, und diese Luft erwärmt sich. Die Mindestzeit verhindert, dass die Anlage darum ständig an- und ausgeht.
+Der Frost-Stopp löst erst aus, wenn die Außentemperatur 5 Minuten lang unter -5 °C bleibt. Ein einzelner falscher Messwert schaltet die Anlage darum nicht ab.
+
+Bei stehender Anlage sendet die Hauptplatine keine neuen Temperaturen. Das Skript kann darum nicht messen, ob es draußen wärmer wird. Nach 6 Stunden Stillstand läuft die Anlage zur Probe an. Das Skript wartet dann auf einen neuen Außenwert. Bleibt es 5 Minuten lang unter -5 °C, geht die Anlage wieder für 6 Stunden aus.
 
 Im ausgeschalteten Zustand zeigt das Bedienteil „0“ und zeitweise „X-e“. Das ist die normale Anzeige.
 
@@ -131,6 +133,8 @@ Der Bus arbeitet mit 9600 Baud. Jedes Paket hat 6 Bytes:
 | 6 | Prüfsumme: Summe der Bytes 1 bis 5 modulo 256 |
 
 Ein Paket mit Register `0x00` ist eine Abfrage. Sein Wert ist das abgefragte Register.
+
+Das Skript nimmt Temperaturen nur aus Paketen der Hauptplatine mit gültiger Prüfsumme an. Ohne diese Prüfung zerlegte es Pakete falsch und las zum Beispiel -43,6 °C. Dieser Wert entspricht dem Rohwert 1, also dem Startbyte.
 
 ### Adressen
 
