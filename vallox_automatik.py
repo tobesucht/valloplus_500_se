@@ -13,6 +13,7 @@ TEMP_INNEN_KUEHL = 23.0    # Ab hier wird die Kühlung wieder gestoppt
 
 # NEU: Der Puffer für die Nachtauskühlung
 TEMP_DIFF_COOLING = 2.0    # Außenluft muss mind. 2.0 °C kühler sein als die Innenluft, damit der Boost startet
+KUEHLSAISON = range(5, 10) # Nachtauskühlung nur von Mai bis September (Monate 5-9)
 
 # Frost-Stopp: Bei sehr kalter Außenluft Anlage ausschalten (keine elektrische Vorheizung)
 TEMP_FROST_STOP = -5.0     # Unter -5°C: Luftaustausch stoppen
@@ -110,6 +111,7 @@ def main():
                 
                 new_wt = last_wt_state
                 new_fan = last_fan_state
+                kuehlsaison = time.localtime(current_time).tm_mon in KUEHLSAISON
 
                 # --- FROST-STOPP ---
                 probelauf = False
@@ -136,8 +138,8 @@ def main():
                     new_wt = ANLAGE_AUS
                     modus = "Frost-Stopp (Anlage AUS)"
 
-                # SZENARIO A: Draußen ist DEUTLICH kühler als drinnen UND drinnen ist es zu warm
-                elif TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
+                # SZENARIO A: Kühlsaison UND draußen ist DEUTLICH kühler als drinnen UND drinnen ist es zu warm
+                elif kuehlsaison and TEMP_MIN < temp_out <= (temp_in - TEMP_DIFF_COOLING) and temp_in >= TEMP_INNEN_ZU_WARM:
                     new_wt = WT_DEAKTIVIERT
                     new_fan = FAN_BOOST
                     modus = "Nachtauskühlung AKTIV"
@@ -159,6 +161,11 @@ def main():
                     new_wt = WT_AKTIV
                     new_fan = FAN_NORMAL
                     modus = "Winterbetrieb (Wärmerückgewinnung)"
+                # Außerhalb der Kühlsaison gibt es keine Wartezone: eine laufende Nachtauskühlung endet
+                elif not kuehlsaison:
+                    new_wt = WT_AKTIV
+                    new_fan = FAN_NORMAL
+                    modus = "Normalbetrieb (keine Kühlsaison)"
                 else:
                     modus = "Wartezone (keine Änderung nötig)"
 

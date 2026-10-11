@@ -1,6 +1,6 @@
 # Vallox ValloPlus 500 SE: Automatik über RS485
 
-Dieses Projekt steuert eine Vallox ValloPlus 500 SE mit dem Bedienteil Digit SED über den RS485-Bus. Ein Python-Skript liest die Temperaturfühler der Anlage. Es stellt den Bypass und die Lüfterstufe ein. Im Sommer kühlt es das Haus nachts mit Außenluft. Bei starkem Frost schaltet es die Anlage aus, damit sie nicht elektrisch vorheizen muss.
+Dieses Projekt steuert eine Vallox ValloPlus 500 SE mit dem Bedienteil Digit SED über den RS485-Bus. Ein Python-Skript liest die Temperaturfühler der Anlage. Es stellt den Bypass und die Lüfterstufe ein. Von Mai bis September kühlt es das Haus nachts mit Außenluft. Bei starkem Frost schaltet es die Anlage aus, damit sie nicht elektrisch vorheizen muss.
 
 Der Bypass leitet die Außenluft am Wärmetauscher vorbei. Ist der Bypass auf, kommt die kühle Nachtluft ohne Erwärmung ins Haus.
 
@@ -37,17 +37,20 @@ Das Skript `vallox_automatik.py` prüft die Temperaturen etwa einmal pro Minute.
 | Nr. | Modus | Bedingung | Bypass | Lüfter |
 |---|---|---|---|---|
 | 1 | Frost-Stopp | außen 5 Minuten lang unter -5 °C | Anlage aus | Anlage aus |
-| 2 | Nachtauskühlung | innen ab 24 °C, außen mindestens 2 °C kühler als innen und über 10 °C | auf | Stufe 4 |
+| 2 | Nachtauskühlung | Mai bis September, innen ab 24 °C, außen mindestens 2 °C kühler als innen und über 10 °C | auf | Stufe 4 |
 | 3 | Normalbetrieb | innen unter 23 °C | zu | Stufe 2 |
 | 4 | Hitzeschutz | außen gleich warm wie innen oder wärmer | zu | Stufe 2 |
 | 5 | Winterbetrieb | außen 10 °C oder kälter | zu | Stufe 2 |
-| 6 | Wartezone | keine andere Regel trifft zu | unverändert | unverändert |
+| 6 | Normalbetrieb | Oktober bis April, keine andere Regel trifft zu | zu | Stufe 2 |
+| 7 | Wartezone | Mai bis September, keine andere Regel trifft zu | unverändert | unverändert |
 
-Die Grenzwerte stehen am Anfang von `vallox_automatik.py`.
+Die Grenzwerte und die Monate der Kühlsaison (`KUEHLSAISON`) stehen am Anfang von `vallox_automatik.py`.
 
 ### Wartezone
 
 In der Wartezone ändert das Skript nichts. Eine laufende Nachtauskühlung läuft darum weiter, auch wenn der Abstand zwischen innen und außen unter 2 °C fällt. Die Nachtauskühlung endet erst, wenn Regel 1, 3, 4 oder 5 zutrifft. So schaltet die Anlage nicht ständig hin und her.
+
+Die Wartezone gilt nur von Mai bis September. Am 1. Oktober endet eine laufende Nachtauskühlung darum spätestens bei der nächsten Prüfung.
 
 Direkt nach dem Start kennt das Skript keinen Sollzustand. Fällt die erste Messung in die Wartezone, sendet es nichts.
 
